@@ -42,61 +42,43 @@ Two things worth knowing before you pick numbers:
   a **miss**.
 
 ---
-## 1.
+## 1. False positives — at most 1 in 10 pieces of my own writing is labeled high-confidence AI
 
-<!-- Your criterion. It must name a number. -->
+Of 10 pieces I wrote myself, at most 1 receives the `"ai"` guess across all three evaluation trials.
 
-
-
-**Why this target:**
-
-
+**Why this target:** A wrong accusation lands on a real person. On any writing platform, being told your own work is AI-generated is damaging and hard to dispute. Missing some AI-generated text costs the site a little friction; falsely accusing a writer costs that person their credibility. I allow 1 in 10 rather than 0 because the blind spot in signal one is real — plain, clearly-written prose can legitimately score high — but I'm not willing to go higher than that.
 
 ---
 
-## 2.
+## 2. Score spread — clearly AI and clearly human text differ by at least 0.4
 
-<!-- Your criterion. -->
+Given one piece of text I judge clearly AI-generated and one I judge clearly human-written, their combined scores differ by at least 0.4 in all three trials.
 
-
-
-**Why this target:**
-
-
+**Why this target:** If the two signals together can't separate an obvious case, the system isn't detecting anything useful — it's just generating noise around 0.5. A spread of 0.4 (e.g., 0.7 vs. 0.3) means the labels "ai" and "human" are actually reachable from real inputs. Anything smaller means the thresholds are sitting in a range the system never actually reaches.
 
 ---
 
-## 3.
+## 3. Label coverage — all three labels are reachable from real input
 
-<!-- Your criterion. -->
+I can produce each of the three labels — `"human"`, `"unsure"`, and `"ai"` — by submitting real (not synthetic) text. All three appear in the audit log by the end of Milestone 5.
 
-
-
-**Why this target:**
-
-
+**Why this target:** A label that no input ever produces is a dead branch. If the thresholds are set such that "unsure" is unreachable, the service is binary when it claims to be three-way. The "unsure" label matters most: it's what the system should return when it genuinely doesn't know, and if it never fires, the system is overclaiming certainty on every borderline case.
 
 ---
 
-## 4.
+## 4. Appeal path — every appeal changes status and appears in the log
 
-<!-- Your criterion. -->
+Of 5 appeals submitted via `POST /appeal` with valid `content_id` values, all 5 return `ok: true`, flip the entry's status to `under_review`, and appear as appeal events in `logs/audit.jsonl`.
 
-
-
-**Why this target:**
-
-
+**Why this target:** The appeal path is the only recourse a falsely-accused writer has. If it silently fails — returns 200 but doesn't write to the log, or changes nothing — the writer believes they've been heard when they haven't. This criterion is binary: it either works every time or it doesn't work. 4 out of 5 is not acceptable for someone's only way to dispute a wrong verdict.
 
 ---
 
-## 5.
+## 5. Bad input — missing or empty text returns a 4xx, not a crash
 
-<!-- Your criterion. -->
+When `text` is missing from the JSON body, or is an empty string, the service returns a 400-level status code with a JSON error body. It does not return a 500 and does not raise an unhandled exception, across all three trials.
 
-
-
-**Why this target:**
+**Why this target:** A crash on malformed input is one of the most common real production failures and one of the most embarrassing. If `detector.model_signal("")` raises an exception and the route doesn't catch it, the service returns a 500 that looks like the whole system is broken — when really it's just bad input. A 400 tells the caller what went wrong; a 500 tells them nothing useful and breaks monitoring.
 
 
 
