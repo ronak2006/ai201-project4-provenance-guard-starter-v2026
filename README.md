@@ -36,45 +36,76 @@
 
 ## What This Does
 
-<!-- The path a submission takes, from arriving to the label a reader sees.
-     Six or seven steps — this is the trace you wrote in Milestone 1. -->
+A piece of text travels through seven steps before the writer sees a verdict:
 
+1. An HTTP POST arrives at `/submit` carrying a JSON body with `text` and `creator_id`.
+2. `detector.model_signal(text)` runs the text through a local GPT-2 model and returns a 0–1 perplexity score — how predictable the text is to the model.
+3. `stylometry.style_signal(text)` measures the *shape* of the text (sentence-length variation, vocabulary diversity, punctuation density) and returns a second 0–1 score.
+4. `scoring.combine_signals(model_score, style_score)` merges the two scores into one combined 0–1 score using a weighted average.
+5. `scoring.score_to_label(combined_score)` maps that number to a machine-readable guess (`"human"` / `"unsure"` / `"ai"`) and a human-readable label sentence.
+6. `audit.log_decision(...)` appends the full record — both signal scores, the combined score, the guess, and the status — to `logs/audit.jsonl`.
+7. The response goes back to the caller as JSON with `content_id`, `guess`, `confidence`, `label`, `model_score`, and `style_score`.
 
+### The false-positive trace
+
+A real writer submits their own work — plainly written, short sentences, everyday vocabulary, no semicolons. The model signal scores it 0.78: low perplexity, because common words are exactly what GPT-2 predicts easily. The style signal scores it 0.66: low sentence-length variation, narrower vocabulary than average. Combined score: ~0.72, above the AI threshold of 0.65. The label reads "AI-generated." The writer never wrote a word of AI output.
+
+Their only recourse is `POST /appeal`. They send their `content_id` and explain in their own words. The service logs the appeal and flips their status to `under_review`. No automatic re-scoring happens. A human reviewer — if one exists — would have to look at it. The threshold that produced the wrong accusation is the same threshold every other submission uses, so changing it to fix this case changes it for everyone.
+
+### Endpoint contracts
+
+**POST /submit**
+
+| Direction | Field | Type | Notes |
+|-----------|-------|------|-------|
+| In | `text` | string | The writing to evaluate |
+| In | `creator_id` | string | Identifies the submitter |
+| Out | `content_id` | string (UUID) | Stable ID for appeals and log lookup |
+| Out | `guess` | `"human"` / `"unsure"` / `"ai"` | Machine-readable verdict |
+| Out | `confidence` | float 0–1 | The combined score |
+| Out | `label` | string | The sentence a reader actually sees |
+| Out | `model_score` | float 0–1 | Signal 1 raw score |
+| Out | `style_score` | float 0–1 | Signal 2 raw score |
+
+**POST /appeal**
+
+| Direction | Field | Type | Notes |
+|-----------|-------|------|-------|
+| In | `content_id` | string (UUID) | Must match an existing log entry |
+| In | `reasoning` | string | The writer's explanation |
+| Out | `ok` | bool | `true` if the appeal was recorded |
+| Out | `content_id` | string | Echoed back |
+| Out | `status` | string | `"under_review"` |
+| Out | `message` | string | Confirmation the writer can read |
 
 ---
 
 ## Signals and Scoring
 
-<!-- For each signal: what property it measures, why that might differ between
-     human and AI writing, and WHAT IT CAN'T SEE.
-
-     The blind spot is not optional. If you can't name it you don't understand
-     the signal yet — and unit 8's attack set is built out of blind spots. -->
-
 ### Signal one — the model signal
 
-**What it measures:**
+**What it measures:** Perplexity — how surprised a GPT-2 language model is by the text. Low perplexity means the model could have predicted each word easily; high perplexity means the text kept surprising it. This is mapped to a 0–1 score where higher means more likely AI.
 
-**Why that might differ between human and AI writing:**
+**Why that might differ between human and AI writing:** AI-generated text is produced by repeatedly choosing statistically likely next tokens, so a language model finds it easy to predict. Human writing wanders — odd word choices, abrupt turns, specific concrete details — producing text the model didn't expect.
 
-**What it can't see:**
+**What it can't see:** Predictability is not authorship. Plain writing — short sentences, common vocabulary, clear structure — scores as AI-like regardless of who wrote it. Someone writing in a second language sticking to words they know, a younger writer, anyone writing for clarity: all are at higher risk of a false accusation. The signal also misses intentional AI prose that uses ornate or rare vocabulary, which surprises the model and scores as human.
 
 ### Signal two — the style signal
 
-**What it measures:**
+**What it measures:** The surface shape of the text — how much sentence lengths vary, how much vocabulary repeats (type-token ratio), and how much punctuation appears relative to text length — without understanding a single word of meaning.
 
-**Why that might differ between human and AI writing:**
+**Why that might differ between human and AI writing:** AI-generated prose tends toward even, mid-length sentences and a narrower vocabulary band because "most likely next word" averages out variation over time. Human writing is lumpier: a three-word sentence next to a forty-word one, idiosyncratic punctuation habits, repeated pet phrases alongside unusual ones.
 
-**What it can't see:**
+**What it can't see:** This signal cannot read. Any surface manipulation that changes the shape without changing the substance defeats it entirely: adding deliberate typos raises vocabulary variety, breaking long sentences raises sentence-spread, pasting in a quoted passage shifts punctuation density. All of these are trivially cheap to do on purpose, and the attack set for Unit 8 is built out of exactly this.
 
 ### The combining rule
 
 <!-- Write the rule in words, then give the numbers. What happens when the two
      signals disagree? -->
 
-**The rule:**
+**The rule:** _(To be decided in Milestone 4 after calibration runs.)_
 
-**The numbers:**
+**The numbers:** _(To be filled in after Milestone 4.)_
 
 **Where it lives:** `scoring.py::combine_signals`
 
