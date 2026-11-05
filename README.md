@@ -181,15 +181,15 @@ $ curl "http://127.0.0.1:5000/log?limit=3"
 
 **Moment 1**
 
-- *What I asked for:*
-- *What came back:*
-- *What I changed:*
+- *What I asked for:* Help implementing the three stylometry measures in `stylometry.py` — specifically how to flip each raw metric so that high values meant AI-like rather than human-like, and how to get them onto a comparable scale before averaging.
+- *What came back:* A suggestion to use coefficient of variation (stdev/mean) for sentence spread, subtract TTR from 1.0 for vocabulary, and scale punctuation density by a fixed factor (25×) so a typical value near 0.04 characters per character mapped to roughly 0.0 on the AI scale.
+- *What I changed:* Accepted the CV and TTR approaches. For punctuation I changed the scaling factor after testing on sample text — the initial suggestion over-penalized plain prose with normal comma use, so I adjusted the multiplier until midrange human text landed near 0.5.
 
 **Moment 2**
 
-- *What I asked for:*
-- *What came back:*
-- *What I changed:*
+- *What I asked for:* Help wording the "unsure" label — specifically how to admit uncertainty without making a writer feel accused, since the instructions said this was the hardest one.
+- *What came back:* Several draft labels, most of which leaned either too technical ("our confidence interval does not support a definitive classification") or too apologetic in a way that would still read as a soft accusation.
+- *What I changed:* Wrote the final version myself, keeping only the structural idea from one of the drafts: name an alternative explanation before pointing to the appeal path. The phrase "this might simply reflect your writing style" is mine — none of the drafts used that framing.
 
 <!-- ═══════════════════════ UNIT 8 — THE TEST ═══════════════════════ -->
 
