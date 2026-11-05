@@ -30,6 +30,8 @@ from flask import Flask, jsonify, request
 
 import audit
 import config
+import scoring
+import stylometry
 
 app = Flask(__name__)
 
@@ -177,13 +179,14 @@ def submit():
     except ValueError as exc:
         return jsonify({"error": "text_too_short", "message": str(exc)}), 400
 
+    style_score = stylometry.style_signal(text)
+    combined_score = scoring.combine_signals(model_score, style_score)
+
     content_id = str(uuid.uuid4())
 
-    # Milestone 4 will fill in style_score and combine_signals; placeholders for now
-    style_score = None
-    combined_score = model_score
+    # Label is a placeholder until Milestone 5 implements score_to_label
     guess = "unsure"
-    label = "Not fully scored yet — style signal pending."
+    label = "Score computed — label mapping pending Milestone 5."
 
     audit.log_decision(
         content_id=content_id,

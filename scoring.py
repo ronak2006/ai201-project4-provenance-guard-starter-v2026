@@ -52,10 +52,15 @@ def combine_signals(model_score: float, style_score: float) -> float:
     The weights in config.py are placeholders. Change them, or ignore them and
     write a different rule.
     """
-    # TODO: replace this
-    return (
+    # Weighted average. Weights live in config.py (default 0.6 model / 0.4 style).
+    # When the two signals disagree, the model signal has more say — it reads
+    # meaning, not just shape, so it's harder to fool with surface edits.
+    # Erring toward the model signal also means plain human writing (which the
+    # style signal tends to read as AI-neutral) doesn't get double-penalized.
+    return round(
         config.WEIGHT_MODEL_SIGNAL * model_score
-        + config.WEIGHT_STYLE_SIGNAL * style_score
+        + config.WEIGHT_STYLE_SIGNAL * style_score,
+        4,
     )
 
 

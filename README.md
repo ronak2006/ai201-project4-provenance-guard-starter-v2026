@@ -100,19 +100,13 @@ Their only recourse is `POST /appeal`. They send their `content_id` and explain 
 
 ### The combining rule
 
-<!-- Write the rule in words, then give the numbers. What happens when the two
-     signals disagree? -->
+**The rule:** Weighted average of the two signals. The model signal gets more weight (0.6) than the style signal (0.4) because it reads meaning, not just surface shape — it's harder to fool with simple text edits. When the two signals disagree, the model signal has the deciding say. This also protects plain-writing humans: the style signal tends to read uniform-but-human prose as AI-neutral, so giving it less weight avoids double-penalizing someone for writing clearly.
 
-**The rule:** _(To be decided in Milestone 4 after calibration runs.)_
-
-**The numbers:** _(To be filled in after Milestone 4.)_
+**The numbers:** `combined = 0.6 × model_score + 0.4 × style_score`
 
 **Where it lives:** `scoring.py::combine_signals`
 
-<!-- ⚠️ The grader checks your code against that line. If your rule lives
-     somewhere else, say where. -->
-
-**A case where my two signals split, and what my rule does with it:**
+**A case where my two signals split, and what my rule does with it:** Lightly-edited AI text often retains low perplexity (model_score ~0.75) but acquires higher sentence-length variation from the editing (style_score ~0.35). The weighted rule produces ~0.59, which lands in the "unsure" band rather than "ai" — the editing has earned it genuine uncertainty rather than a confident wrong call. A 50/50 average would give 0.55 (still unsure), so both weightings agree here; the difference appears with more extreme splits.
 
 
 
