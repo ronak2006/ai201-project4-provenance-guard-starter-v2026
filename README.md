@@ -138,19 +138,21 @@ Their only recourse is `POST /appeal`. They send their `content_id` and explain 
 
 **A submission**
 
-<!-- The response needs content_id, guess, confidence, label, AND both
-     signal scores - model_score and style_score. Unit 8's tools read those
-     two off the response, so leaving them out costs you next unit's
-     diagnostics. -->
-
 ```bash
 $ curl -X POST http://127.0.0.1:5000/submit \
   -H "Content-Type: application/json" \
-  -d '{"text": "...", "creator_id": "..."}'
+  -d '{"text": "I stayed up too late finishing this. My eyes hurt and the words stopped making sense around page four, but I kept going because I wanted to get the argument right, not just done. That is probably a bad sign about my priorities.", "creator_id": "student-example"}'
 ```
 
 ```json
-
+{
+  "confidence": 0.4327,
+  "content_id": "0554f516-bc08-4e0a-8102-9cb688417e73",
+  "guess": "unsure",
+  "label": "We're not certain about this one. Our tools noticed some patterns that can appear in AI-generated writing, but not enough to say so with confidence. This might simply reflect your writing style. If you wrote this yourself, you can submit an appeal.",
+  "model_score": 0.4015,
+  "style_score": 0.4794
+}
 ```
 
 **An appeal**
@@ -158,11 +160,16 @@ $ curl -X POST http://127.0.0.1:5000/submit \
 ```bash
 $ curl -X POST http://127.0.0.1:5000/appeal \
   -H "Content-Type: application/json" \
-  -d '{"content_id": "...", "reasoning": "..."}'
+  -d '{"content_id": "0554f516-bc08-4e0a-8102-9cb688417e73", "reasoning": "I wrote every word of this myself at 1am after re-reading my notes."}'
 ```
 
 ```json
-
+{
+  "content_id": "0554f516-bc08-4e0a-8102-9cb688417e73",
+  "message": "Your appeal has been recorded. A reviewer will look at this submission.",
+  "ok": true,
+  "status": "under_review"
+}
 ```
 
 **What the log shows afterwards**
@@ -172,7 +179,30 @@ $ curl "http://127.0.0.1:5000/log?limit=3"
 ```
 
 ```json
-
+{
+  "count": 2,
+  "entries": [
+    {
+      "combined_score": 0.4327,
+      "content_id": "0554f516-bc08-4e0a-8102-9cb688417e73",
+      "creator_id": "student-example",
+      "guess": "unsure",
+      "label": "We're not certain about this one. Our tools noticed some patterns that can appear in AI-generated writing, but not enough to say so with confidence. This might simply reflect your writing style. If you wrote this yourself, you can submit an appeal.",
+      "model_score": 0.4015,
+      "status": "decided",
+      "style_score": 0.4794,
+      "timestamp": "2026-11-05T01:18:01+00:00"
+    },
+    {
+      "content_id": "0554f516-bc08-4e0a-8102-9cb688417e73",
+      "creator_id": "student-example",
+      "event": "appeal",
+      "reasoning": "I wrote every word of this myself at 1am after re-reading my notes.",
+      "status": "under_review",
+      "timestamp": "2026-11-05T01:18:06+00:00"
+    }
+  ]
+}
 ```
 
 ---
