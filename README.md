@@ -121,14 +121,11 @@ Their only recourse is `POST /appeal`. They send their `content_id` and explain 
 
 | Label | Score range | The exact text a reader sees |
 |---|---|---|
-| high-confidence human |  |  |
-| unsure |  |  |
-| high-confidence AI |  |  |
+| high-confidence human | 0.00 – 0.35 | "This looks like it was written by a person. Our analysis found nothing that suggests otherwise." |
+| unsure | 0.35 – 0.65 | "We're not certain about this one. Our tools noticed some patterns that can appear in AI-generated writing, but not enough to say so with confidence. This might simply reflect your writing style. If you wrote this yourself, you can submit an appeal." |
+| high-confidence AI | 0.65 – 1.00 | "Our tools suggest this was likely written by an AI. If you wrote this yourself, you can submit an appeal and we'll take a closer look." |
 
-**Why I worded the "unsure" one this way:**
-<!-- It's the hardest of the three. It has to admit uncertainty without
-     sounding like an accusation, because the person reading it may well have
-     written every word themselves. -->
+**Why I worded the "unsure" one this way:** "Unsure" is the label a real person is most likely to get on work they wrote honestly, so it carries the highest risk of causing harm. It has to admit uncertainty without feeling like a soft accusation. The phrase "this might simply reflect your writing style" does two things: it names a real alternative explanation, and it shifts the frame from "you did something wrong" to "our tool has limits." Pointing to the appeal path gives the writer something to do other than feel accused with no recourse.
 
 
 

@@ -183,10 +183,7 @@ def submit():
     combined_score = scoring.combine_signals(model_score, style_score)
 
     content_id = str(uuid.uuid4())
-
-    # Label is a placeholder until Milestone 5 implements score_to_label
-    guess = "unsure"
-    label = "Score computed — label mapping pending Milestone 5."
+    guess, label = scoring.score_to_label(combined_score)
 
     audit.log_decision(
         content_id=content_id,
@@ -229,13 +226,30 @@ def appeal():
     wrong accusation and nothing at all.
     """
     payload = request.get_json(silent=True) or {}
+    content_id = payload.get("content_id", "")
+    reasoning = payload.get("reasoning", "")
 
-    # TODO: delete this and build the route.
+    if not content_id:
+        return jsonify({"error": "missing_content_id", "message": "Field 'content_id' is required."}), 400
+
+    if not audit.entries_for(content_id):
+        return jsonify({"error": "not_found", "message": f"No submission found with content_id '{content_id}'."}), 404
+
+    # Find the creator_id from the original decision
+    original = next(
+        (e for e in audit.entries_for(content_id) if e.get("status") == "decided"),
+        {},
+    )
+    creator_id = original.get("creator_id", "unknown")
+
+    audit.log_appeal(content_id=content_id, creator_id=creator_id, reasoning=reasoning)
+
     return jsonify({
-        "error": "not_implemented",
-        "message": "POST /appeal isn't built yet — see the TODO in app.py.",
-        "you_sent": payload,
-    }), 501
+        "ok": True,
+        "content_id": content_id,
+        "status": "under_review",
+        "message": "Your appeal has been recorded. A reviewer will look at this submission.",
+    })
 
 
 # ── Already works ─────────────────────────────────────────────────────────────
