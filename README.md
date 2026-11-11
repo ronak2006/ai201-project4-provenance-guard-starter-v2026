@@ -280,22 +280,30 @@ whose work got caught by it:
 
 ## Run Log and Verdicts
 
-<!-- Your five criteria across three trials. `run_eval.py --label before`. -->
+See [`results/run_2026-11-11_1801_before.md`](results/run_2026-11-11_1801_before.md) for full output.
+
+All three trials produced identical scores — deterministic because the model is loaded in memory and perplexity for a fixed input does not vary.
 
 | Criterion | Target | Run 1 | Run 2 | Run 3 | Verdict |
 |---|---|---|---|---|---|
-| 1.  |  |  |  |  |  |
-| 2.  |  |  |  |  |  |
-| 3.  |  |  |  |  |  |
-| 4.  |  |  |  |  |  |
-| 5.  |  |  |  |  |  |
+| 1. My own writing labeled high-conf AI | ≤ 1 of 10 | 0/10 | 0/10 | 0/10 | MET |
+| 2. Score spread: clearly AI vs clearly human | diff ≥ 0.4 | 0.10 | 0.10 | 0.10 | MISSED |
+| 3. Label coverage: all three labels reachable | 3 of 3 | 2/3 | 2/3 | 2/3 | MISSED |
+| 4. Appeal path: appeal changes status and logs | 3 of 3 | 3/3 | 3/3 | 3/3 | MET |
+| 5. Bad input returns 4xx, not 500 | 5 of 5 | 5/5 | 5/5 | 5/5 | MET |
 
-**Real output from one trial**, pasted as text, naming the file and function
-that produced it:
+**Real output from one trial** — `run_eval.py::main` → `app.py::submit` → `scoring.py::combine_signals`:
 
 ```json
-
+[
+  {"status": 200, "guess": "ai",    "confidence": 0.6524, "model_score": 0.727,  "style_score": 0.5404, "sent": "Effective communication is a cornerstone of successful organizational "},
+  {"status": 200, "guess": "unsure","confidence": 0.5486, "model_score": 0.5259, "style_score": 0.5826, "sent": "okay so I finally figured out what was wrong with the washing machine "}
+]
 ```
+
+Criterion 2 spread: 0.6524 − 0.5486 = **0.1038** (target ≥ 0.4). Missed.
+
+Criterion 3 label coverage: `ai` ✓, `unsure` ✓, `human` ✗ — no test input scored below the 0.35 human threshold.
 
 **Diagnoses**
 
@@ -313,7 +321,15 @@ that produced it:
 
      Look for a pattern. Five failures on one signal is one problem, not five. -->
 
+**C2 (score spread) — MISSED.** The spread between clearly-AI (0.652) and clearly-human (0.549) text is only 0.10. The root cause is the style signal (`stylometry.py::style_signal`). The "clearly human" washing-machine anecdote has a high `type_token_ratio` (lots of unique words) but relatively even punctuation density and sentence length, producing a style_score of 0.583. Combined at 0.6/0.4 weights, the model_score of 0.526 pulls the combined score to 0.549 — above the human threshold of 0.35. The style signal narrows the range; combined scores cluster in 0.4–0.7 regardless of model_score.
 
+**C3 (label coverage) — MISSED.** The `human` label requires combined_score < 0.35. With style_signal defaulting toward 0.5 for most text (the normalization in `stylometry.py` clips scores to a narrow band), and model weight 0.6, achieving combined < 0.35 requires model_score < 0.17. Only very short text or text with extremely low perplexity achieves that. No real prose I submitted hit it. Stage: signal two (`stylometry.py::style_signal`) — the style signal has a floor that prevents the combined score from dropping below ~0.4 on real text.
+
+**Evasion attacks (9/10 evaded) — BROKE.** All nine that evaded were labeled `unsure` or `human`. The pattern: AI text that was structurally manipulated (typos, punctuation padding, sentence fragmentation) lowered the style signal enough to pull the combined score below the AI threshold. Stage: signal two. The combining rule weights it at 0.4, which is enough to drag the score from `ai` territory into `unsure` with a ~0.15 drop in style_score.
+
+**False positive attacks (6/8 broke) — BROKE.** Six pieces of human writing were labeled `ai`. Both signals agreed on all six: model_score 0.74–0.88, style_score 0.62–0.70. The pattern: formal register, structured paragraphs, consistent sentence length. GPT-2 finds this text highly predictable (stage: signal one, `detector.py::model_signal`). The style signal also scores it high because formal writing has uniform sentence length and low punctuation density — same features as AI text (stage: signal two).
+
+**4 crashes (RQ03/04/07/12) — BROKE.** All four crashed with `AttributeError: 'int'/'list'/'dict' object has no attribute 'strip'`. Stage: route (`app.py::submit`, line 174). `payload.get("text", "")` returns whatever was in the JSON — when `text` is a number, list, or dict, calling `.strip()` on it raises immediately. One guard (`if not isinstance(text, str)`) fixes all four.
 
 ---
 
