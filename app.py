@@ -153,7 +153,7 @@ def health():
 # ── YOU BUILD THIS ────────────────────────────────────────────────────────────
 
 @app.post("/submit")
-# @limiter.limit(f"{config.RATE_LIMIT_PER_MINUTE}/minute;{config.RATE_LIMIT_PER_DAY}/day")
+@limiter.limit(f"{config.RATE_LIMIT_PER_MINUTE}/minute;{config.RATE_LIMIT_PER_DAY}/day")
 def submit():
     """
     Take a piece of text, decide about it, log the decision, answer.
@@ -172,11 +172,13 @@ def submit():
     creator_id = payload.get("creator_id", "unknown")
 
     if not text or not text.strip():
+        audit.log_rejection(creator_id=creator_id, reason="missing_text")
         return jsonify({"error": "missing_text", "message": "Field 'text' is required and must not be empty."}), 400
 
     try:
         model_score = detector.model_signal(text)
     except ValueError as exc:
+        audit.log_rejection(creator_id=creator_id, reason="text_too_short")
         return jsonify({"error": "text_too_short", "message": str(exc)}), 400
 
     style_score = stylometry.style_signal(text)
