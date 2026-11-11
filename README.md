@@ -335,20 +335,22 @@ Criterion 3 label coverage: `ai` ✓, `unsure` ✓, `human` ✗ — no test inpu
 
 ## The Improvement
 
-**What I changed:**
+**What I changed:** Input validation in `app.py::submit`. Two guards: (1) `if not isinstance(payload, dict): payload = {}` to handle non-object JSON bodies; (2) `if not isinstance(text, str) or not text.strip()` to handle non-string values in the `text` field.
 
-**Which diagnosis pointed at it:**
+**Which diagnosis pointed at it:** The 4 crash diagnosis — `'int'/'list'/'dict' object has no attribute 'strip'` on RQ03/04/07/12. The same pattern already existed in the 429 error handler in the same file.
 
 ### Attack Run — After
 
-<!-- Same format. `run_attacks.py --label after` -->
+See [`results/attack_run_2026-11-11_1807_after.md`](results/attack_run_2026-11-11_1807_after.md).
 
+**Before:** 4 auto-BROKE (500s on RQ03/04/07/12)
+**After:** 0 auto-BROKE — all four now return 400
 
+All other results unchanged: evasion, false positive, prompt injection, flood verdicts are identical.
 
-**Did it help, and how do I know:**
+Eval after: [`results/run_2026-11-11_1807_after.md`](results/run_2026-11-11_1807_after.md) — criteria C1/C4/C5 still MET, C2/C3 still MISSED (scoring unchanged).
 
-<!-- Widening the unsure band usually fixes one problem and creates another.
-     Reporting that trade honestly is worth full credit. -->
+**Did it help, and how do I know:** Yes, for crashes. The four 500s became 400s — the route now handles all JSON types gracefully. No trade: input validation doesn't affect scoring at all, so there's no regression anywhere else. C2 and C3 remain missed because the fix didn't touch the signals or thresholds.
 
 
 
@@ -356,15 +358,17 @@ Criterion 3 label coverage: `ai` ✓, `unsure` ✓, `human` ✗ — no test inpu
 
 ## What's Still Broken
 
-<!-- For each attack still getting through and each criterion still missed:
-     what you'd do, and why you stopped. -->
+**Evasion (9/10):** AI text manipulated with typos, padding, or sentence fragmentation evades as `unsure`. Fixing this requires either a stronger style signal that penalizes artificial manipulation, or raising the AI threshold — but raising the threshold would push more borderline human text into `ai`. I stopped because fixing evasion and false positives pull in opposite directions and I could not move one without worsening the other in one change.
 
+**False positives (6/8):** Formal human writing (essays, documentation, non-native-speaker prose) is labeled `ai`. Fixing this requires either a lower AI threshold or reweighting the model signal down — but that would let more AI text through. I stopped because the false positive problem lives in signal one's blind spot: GPT-2 finds formal prose predictable regardless of who wrote it.
 
+**Label coverage (C3):** The `human` label is unreachable from real prose. The style signal has a floor around 0.45 on any real text with normal punctuation and varied sentences. Fixing this requires either normalizing the style signal differently or lowering `HUMAN_THRESHOLD` to ~0.25. I stopped because lowering the threshold below 0.35 would have no effect on the false positive attacks (they score 0.72–0.79) but would let borderline cases through.
+
+**Score spread (C2):** Only 0.10 spread between the clearly-AI and clearly-human test inputs. Fixing this requires the clearly-human text to score below 0.3, which requires either a model_score below 0.17 or a significantly lower style_score. The style signal is the bottleneck: its normalization compresses all real text into a narrow range.
 
 **The trade I'd make if this ran for real:**
 
-<!-- Two sentences. Fewer wrong accusations means more AI text getting through.
-     Say which way you'd go and WHO PAYS FOR IT. -->
+I would widen the `unsure` band by lowering `AI_THRESHOLD` from 0.65 to 0.75, accepting that more AI text gets labeled `unsure` instead of `ai`. The writers who pay for the current system are the ones falsely accused — formal writers, non-native speakers, students writing to a rubric. Those are real people. The cost of letting some AI text into the `unsure` band is that a reviewer has to look at it, which is a process cost. The cost of a wrong `ai` accusation lands on a person. I would make the system err toward the person.
 
 
 

@@ -167,11 +167,13 @@ def submit():
     """
     import detector
 
-    payload = request.get_json(silent=True) or {}
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        payload = {}
     text = payload.get("text", "")
     creator_id = payload.get("creator_id", "unknown")
 
-    if not text or not text.strip():
+    if not isinstance(text, str) or not text.strip():
         audit.log_rejection(creator_id=creator_id, reason="missing_text")
         return jsonify({"error": "missing_text", "message": "Field 'text' is required and must not be empty."}), 400
 
